@@ -67,7 +67,7 @@ int img_dist(char *image1, char *image2) {
 void *memoire_partage(size_t size){
     const int protection = PROT_READ | PROT_WRITE;
     const int visibility = MAP_SHARED | MAP_ANONYMOUS;
-    int *ptr = (int *)mmap(NULL, size, protection, visibility, -1, 0);
+    void *ptr = mmap(NULL, size, protection, visibility, -1, 0);
     if(ptr == MAP_FAILED){
         perror("MMAP");
         exit(1);
@@ -80,9 +80,10 @@ int appel(int argc, char* argv[]) {
     (void)argc;
 
     pid_t child1, child2;
-    int littleVal=0;
-    int *tab = memoire_partage(sizeof(int) * TAB_SIZE);
-    tab[littleVal] =65;
+    
+    int *tab = (int*)memoire_partage(sizeof(int) * TAB_SIZE);
+    char *mostSimilarImage = (char *)memoire_partage(sizeof(int) * TAB_SIZE);
+    *tab = 65;
 
     
 
@@ -111,27 +112,24 @@ int appel(int argc, char* argv[]) {
         close(mypipe1[WRITE]);
         char buffer[999];
         char size[10];
-        ssize_t bytesRead;
-        tab[0] = 65;
-        while ((bytesRead = read(mypipe1[READ], size, sizeof(char))) > 0) {
+        while (read(mypipe1[READ], size, sizeof(char)) > 0) {
+            
             int intSize = atoi(size);
+            if(intSize == 1){
+                close(mypipe1[READ]);
+                exit(0);
+            }
             char *buf = read_Pipe(mypipe1[READ], buffer, intSize);
             char dest[50];
             strcpy(dest, "img/");
             strcat(dest, buf);
-            //printf("Reçu via le pipe nommé 1: %s\n", dest);
             int return_dist = img_dist(argv[1], dest);
-            printf("hello, %d, %d\n", return_dist, *tab);
             if(return_dist < *tab){
-                //printf("hello, %d, %d\n", return_dist, *tab);
-                littleVal++;
-                tab[littleVal] = return_dist;
-                printf("tab = %d\n", tab[0]);
-                }
-            printf("Le processus fils 1 s'est terminé avec le code de retour : %d\n", return_dist);
+                *tab = return_dist;
+                strcpy(mostSimilarImage, dest);
+                //*mostSimilarImage = &dest;
+            }
         }
-        close(mypipe1[READ]);
-        
     } else {
         child2 = fork();
 
@@ -145,25 +143,24 @@ int appel(int argc, char* argv[]) {
             close(mypipe2[WRITE]);
             char buffer[999];
             char size[10];
-            ssize_t bytesRead;
-            tab[0] = 65;
-            while ((bytesRead = read(mypipe2[READ], size, sizeof(char))) > 0) {
+
+            while(read(mypipe2[READ], size, sizeof(char)) > 0) {
+
                 int intSize = atoi(size);
+                if(intSize == 1){
+                    close(mypipe2[READ]);
+                    exit(0);
+                }
                 char *buf = read_Pipe(mypipe2[READ], buffer, intSize);
                 char dest[50];
                 strcpy(dest, "img/");
                 strcat(dest, buf);
                 int return_dist = img_dist(argv[1], dest);
-                printf("hello, %d, %d\n", return_dist, *tab);
                 if(return_dist < *tab){
-                    //printf("hello, %d, %d\n", return_dist, *tab);
-                    littleVal++;
-                    tab[littleVal] = return_dist;
-                    printf("tab = %d\n", tab[0]);
+                    *tab = return_dist;
+                    strcpy(mostSimilarImage, dest);
                 }
-                printf("Le processus fils 2 s'est terminé avec le code de retour : %d\n", return_dist);
             }
-            close(mypipe2[READ]);
         } else {
             // Code exécuté par le processus parent
             close(mypipe1[READ]);
@@ -175,7 +172,6 @@ int appel(int argc, char* argv[]) {
 
             // Spécifiez le chemin du dossier que vous souhaitez lister
             const char *path = argv[2];
-            printf("argv[2]");
 
             directory = opendir(path);
 
@@ -200,11 +196,20 @@ int appel(int argc, char* argv[]) {
                     cpt++;
                 }
             }
-            closedir(directory);
+            write_pipe(mypipe1[WRITE], "1", strlen("1"));
+            write_pipe(mypipe2[WRITE], "1", strlen("1"));
+
             close(mypipe1[WRITE]);
             close(mypipe2[WRITE]);
+            
+            int status1, status2;
+            waitpid(child1, &status1, 0);
+            waitpid(child2, &status2, 0);
+            
+            printf("Most similar image found: '%s' with a distance of %d.\n", mostSimilarImage, *tab);
+
+            closedir(directory);
         }
-    printf("la plus petit valeur %d\n", tab[littleVal]);
     munmap(tab, sizeof(int) * TAB_SIZE);
     }
     return 0;
