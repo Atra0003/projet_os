@@ -6,35 +6,36 @@ if [ $# == 2 ]; then
     if find img -type f -path "$2" -print | grep -q "$2"; then
 
         if [ "$1" == "-i" -o "$1" == "--interactive" ]; then # Mode interactif
-        mkdir bankImage
-        chmod +w bankImage
-        nbImage=0
+            mkdir bankImage
+            chmod +w bankImage
+            nbImage=0
+            echo "1"
+            while true; do
+                read -p "" input
+                if [ -z "$input" ]; then # Fin de la préparation de la banque d'images.
+                    if [ $nbImage == 0 ]; then
+                        echo "2"
+                        echo "No similar image found (no comparison could be performed successfully)."
+                    fi
+                    break
+                fi
 
-        while true; do
-            read -p "Entrer le chemin d'une image (Ctrl+D pour quitter) : " input
-            if [ -z "$input" ]; then # Fin de la préparation de la banque d'images.
-                if [ $nbImage == 0 ]; then
+                # Vérification de la présence du fichier dans le dossier.
+                if find img -type f -path "$input" -print | grep -q "$input"; then
+                    cp "$input" "bankImage/" # Ajout d'image dans la banque d'images.
+                    nbImage+=1
+                    # Lancer img-dist et stacker la valeur de retour et l'image
+                else
                     echo "No similar image found (no comparison could be performed successfully)."
                 fi
-                break
-            fi
+            done
 
-            # Vérification de la présence du fichier dans le dossier.
-            if find img -type f -path "$input" -print | grep -q "$input"; then
-                cp "$input" "bankImage/" # Ajout d'image dans la banque d'images.
-                nbImage+=1
-                # Lancer img-dist et stacker la valeur de retour et l'image
-            else
-                echo "No similar image found (no comparison could be performed successfully)."
+            if [ $? -eq 0 ]; then # Compilation réussie.
+                make -B
+                ./img-search $2 bankImage
+                rm -r bankImage
             fi
-        done
-        make -B
-
-        if [ $? -eq 0 ]; then # Compilation réussie.
-            ./img-search $2 bankImage
-            # Exécute votre programme ou effectue d'autres actions si nécessaire
-        fi
-    fi
+        fi 
 
     else
         # echo "Le paramètre 2 (image) n'est pas une image du dossier image."
@@ -44,3 +45,15 @@ if [ $# == 2 ]; then
 else
     echo "Most similar image found: '$2' with a distance of 0."
 fi
+
+
+
+#if [ $# == 3 ]; then
+#    if find img -type f -path "$2" -print | grep -q "$2"; then
+#        if [ "$1" == "-a" -o "$1" == "--automatic" ]; then
+#            if [ -d $3 ]; then
+#                ./img-search $2 $3
+#            fi 
+#        fi
+#    fi
+#fi
