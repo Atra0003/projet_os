@@ -3,19 +3,18 @@
 
 if [ $# == 2 ]; then
     # Vérification du chemin de l'image
-    if find img -type f -path "$2" -print | grep -q "$2"; then
-
-        if [ "$1" == "-i" -o "$1" == "--interactive" ]; then # Mode interactif
+    if [ "$1" == "-i" -o "$1" == "--interactive" ]; then # Mode interactif
+        if find img -type f -path "$2" -print | grep -q "$2"; then
             mkdir bankImage
             chmod +w bankImage
             nbImage=0
-            echo "1"
             while true; do
                 read -p "" input
                 if [ -z "$input" ]; then # Fin de la préparation de la banque d'images.
                     if [ $nbImage == 0 ]; then
-                        echo "2"
                         echo "No similar image found (no comparison could be performed successfully)."
+                        rm -r bankImage
+                        exit 1
                     fi
                     break
                 fi
@@ -30,17 +29,20 @@ if [ $# == 2 ]; then
                 fi
             done
 
+
             if [ $? -eq 0 ]; then # Compilation réussie.
                 make -B
                 ./img-search $2 bankImage
                 rm -r bankImage
             fi
+        else
+            # echo "Le paramètre 2 (image) n'est pas une image du dossier image."
+            echo "No similar image found (no comparison could be performed successfully)."
         fi 
 
     else
         # echo "Le paramètre 2 (image) n'est pas une image du dossier image."
         echo "No similar image found (no comparison could be performed successfully)."
-        #exit 1
     fi
 else
     echo "Most similar image found: '$2' with a distance of 0."
@@ -48,12 +50,12 @@ fi
 
 
 
-#if [ $# == 3 ]; then
-#    if find img -type f -path "$2" -print | grep -q "$2"; then
-#        if [ "$1" == "-a" -o "$1" == "--automatic" ]; then
-#            if [ -d $3 ]; then
-#                ./img-search $2 $3
-#            fi 
-#        fi
-#    fi
-#fi
+if [ $# == 3 ]; then
+    if [ "$1" == "-a" -o "$1" == "--automatic" ]; then
+        if find img -type f -path "$2" -print | grep -q "$2"; then
+            if [ -d $3 ]; then
+                ./img-search $2 $3
+            fi 
+        fi
+    fi
+fi
