@@ -52,10 +52,10 @@ fi
 
 if [ $# == 3 ]; then
     if [ "$1" == "-a" -o "$1" == "--automatic" ]; then
-        if find img -type f -path "$2" -print | grep -q "$2"; then
-            if [ -d $3 ]; then
-                ./img-search $2 $3
-            fi 
-        fi
+        #if find img -type f -path "$2" -print | grep -q "$2"; then
+        if [ -d $3 ]; then
+            ./img-search $2 $3
+        fi 
+        #fi
     fi
 fi
